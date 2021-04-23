@@ -1,8 +1,23 @@
-const router = require('express').Router();
+const router = require("express").Router();
+const jwt = require("jsonwebtoken");
 
-router.post('/register', (req, res) => {
-  res.end('implement register, please!');
-  /*
+const User = require("../users/users-model");
+const {
+  validateUser,
+  checkUsernameUnique,
+  checkUsernameExists,
+  hashPassword,
+  checkPassword,
+} = require("./auth-middleware");
+const { JWT_SECRET } = require("../secrets");
+
+router.post(
+  "/register",
+  validateUser,
+  checkUsernameUnique,
+  hashPassword,
+  (req, res, next) => {
+    /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
     DO NOT EXCEED 2^8 ROUNDS OF HASHING!
@@ -27,11 +42,22 @@ router.post('/register', (req, res) => {
     4- On FAILED registration due to the `username` being taken,
       the response body should include a string exactly as follows: "username taken".
   */
-});
+    const user = req.body;
+    User.add(user)
+      .then((user) => {
+        res.status(201).json(user);
+      })
+      .catch(next);
+  }
+);
 
-router.post('/login', (req, res) => {
-  res.end('implement login, please!');
-  /*
+router.post(
+  "/login",
+  validateUser,
+  checkUsernameExists,
+  checkPassword,
+  (req, res) => {
+    /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
 
@@ -54,6 +80,23 @@ router.post('/login', (req, res) => {
     4- On FAILED login due to `username` not existing in the db, or `password` being incorrect,
       the response body should include a string exactly as follows: "invalid credentials".
   */
-});
+    const token = buildToken(req.user);
+    res.status(200).send({
+      message: `welcome, ${req.user.username}`,
+      token,
+    });
+  }
+);
+
+function buildToken(user) {
+  const payload = {
+    subject: user.user_id,
+    username: user.username,
+  };
+  const options = {
+    expiresIn: "1d",
+  };
+  return jwt.sign(payload, JWT_SECRET, options);
+}
 
 module.exports = router;
